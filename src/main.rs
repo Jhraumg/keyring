@@ -6,67 +6,76 @@ use eyre::{Result, Context};
 
 #[derive(Parser, Debug)]
 struct GetEntryProps{
-    /// secret name
-    #[clap()]
-    secret_name : String,
+    
+    /// service name
+    #[arg()]
+    service_name : String,
+    
+    /// user name
+    #[arg()]
+    user_name : String,
 }
 
 #[derive(Parser, Debug)]
 struct SetEntryProps{
-    /// secret name
-    #[clap(value_parser)]
-    secret_name : String,
+    /// service name
+    #[arg()]
+    service_name : String,
+    
+    /// user name
+    #[arg()]
+    user_name : String,
     
     /// secret . If none is provided, will be asked for interactively
-    #[clap()]
+    #[arg()]
     secret : Option<String>,
 }
 
 #[derive(Parser, Debug)]
 enum Command {
     /// set / update a secret
-    #[clap()]
+    #[arg()]
     Set(SetEntryProps),
 
     /// retrieve a secret
-    #[clap()]
+    #[arg()]
     Get(GetEntryProps)
 }
 
 /// Load/Store secrets from/into keyring
 #[derive(Parser, Debug)]
-#[clap(version, about, long_about = None)]
+#[command(version, about, long_about = None)]
 struct Args {
    /// command
-   #[clap(subcommand)]
+   #[command(subcommand)]
    command: Command,
 }
 
 
-fn new_entry(secret_name : &str) -> Entry {
-    Entry::new_with_target(secret_name, "service", "username")
+fn new_entry(service_name : &str, user_name : &str) -> Entry {
+    Entry::new(service_name, user_name)
 }
 
-fn get_secret(secret_name : &str)-> Result<()>{
-    let entry = new_entry(secret_name);
-    let secret = entry.get_password().wrap_err_with(|| format!("could not read {secret_name}"))?;
-    print!("{secret}");
+fn get_secret(service_name : &str, user_name : &str)-> Result<()>{
+    let entry = new_entry(service_name, user_name);
+    let secret = entry.get_password().wrap_err_with(|| format!("could not read '{service_name}' '{user_name}'"))?;
+    println!("{secret}");
     Ok(())
 }
 
-fn set_secret(secret_name : &str, secret : Option<String>)->Result<()>{
+fn set_secret(service_name : &str, user_name : &str, secret : Option<String>)->Result<()>{
 
     let secret = match secret {
         Some(secret) => secret,
         None => rpassword::prompt_password("Type secret value: ")?,
     };
 
-    write_secret(secret_name, &secret)
+    write_secret(service_name, user_name, &secret)
 }
 
-fn write_secret(secret_name : &str, secret : &str)-> Result<()>{
-    let entry = new_entry(secret_name);
-    entry.set_password(secret).wrap_err_with(|| format!("could not write {secret_name}"))?;
+fn write_secret(service_name : &str, user_name : &str, secret : &str)-> Result<()>{
+    let entry = new_entry(service_name, user_name);
+    entry.set_password(secret).wrap_err_with(|| format!("could not write {service_name} {user_name}"))?;
     Ok(())
 }
 
@@ -74,8 +83,8 @@ fn write_secret(secret_name : &str, secret : &str)-> Result<()>{
 fn main() -> Result<()> {
     let args: Args = Args::parse();
     match args.command {
-        Command::Set(setopts) => set_secret(&setopts.secret_name, setopts.secret)?,
-        Command::Get(getopts) => get_secret(&getopts.secret_name)?,
+        Command::Set(setopts) => set_secret(&setopts.service_name, &setopts.user_name, setopts.secret)?,
+        Command::Get(getopts) => get_secret(&getopts.service_name, &getopts.user_name)?,
     }
 
     Ok(())
