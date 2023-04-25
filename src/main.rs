@@ -52,12 +52,12 @@ struct Args {
 }
 
 
-fn new_entry(service_name : &str, user_name : &str) -> Entry {
-    Entry::new(service_name, user_name)
+fn new_entry(service_name : &str, user_name : &str) -> Result<Entry> {
+    Entry::new(service_name, user_name).wrap_err_with(||format!("could not select entry '{service_name}' for user '{user_name}'/"))
 }
 
 fn get_secret(service_name : &str, user_name : &str)-> Result<()>{
-    let entry = new_entry(service_name, user_name);
+    let entry = new_entry(service_name, user_name)?;
     let secret = entry.get_password().wrap_err_with(|| format!("could not read '{service_name}' '{user_name}'"))?;
     println!("{secret}");
     Ok(())
@@ -74,7 +74,7 @@ fn set_secret(service_name : &str, user_name : &str, secret : Option<String>)->R
 }
 
 fn write_secret(service_name : &str, user_name : &str, secret : &str)-> Result<()>{
-    let entry = new_entry(service_name, user_name);
+    let entry = new_entry(service_name, user_name)?;
     entry.set_password(secret).wrap_err_with(|| format!("could not write {service_name} {user_name}"))?;
     Ok(())
 }
